@@ -1,157 +1,242 @@
--- ImprovedBaChuUI.lua
+-- PurpleHubUI.lua (v2.0)
 local Library = {}
 Library.__index = Library
 
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService("RunService")
+
 function Library.CreateWindow(config)
     local title = config.Title or "UI Hub"
-    local logo = config.LogoImage -- url decal
     local desc = config.Description or ""
-    local self = setmetatable({}, Library)
+    local logo = config.LogoImage -- optional decal URL
+    local themeColor = Color3.fromRGB(128, 0, 128) -- tím đặc trưng
 
-    local sg = Instance.new("ScreenGui")
-    sg.Name = "BaChuUI"; sg.Parent = game:GetService("CoreGui")
+    local self = setmetatable({}, Library)
+    self.Tabs = {} self.Buttons = {}
+
+    local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
+    sg.Name = "PurpleHubUI"
     self.sg = sg
 
-    -- Main transparent rounded frame
-    local Frame = Instance.new("Frame", sg)
-    Frame.AnchorPoint = Vector2.new(0.5,0.5)
-    Frame.Position = UDim2.new(0.5,0,0.5,0)
-    Frame.Size = UDim2.new(0,480,0,320)
-    Frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-    Frame.BackgroundTransparency = 0.4
-    Frame.ClipsDescendants = true
-    Frame.AutoLocalize = false
-    self.Frame = Frame
+    local frame = Instance.new("Frame", sg)
+    frame.AnchorPoint, frame.Position = Vector2.new(0.5,0.5), UDim2.new(0.5,0.5,0,0)
+    frame.Size = UDim2.new(0,520,0,360)
+    frame.BackgroundColor3 = Color3.new(0,0,0)
+    frame.BackgroundTransparency = 0.5
+    frame.ClipsDescendants = true
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0,12)
+    self.Frame = frame
 
-    -- Corner rounding
-    local UICorner = Instance.new("UICorner", Frame)
-    UICorner.CornerRadius = UDim.new(0,12)
+    -- Header
+    local header = Instance.new("Frame", frame)
+    header.Size = UDim2.new(1,0,0,36)
+    header.BackgroundTransparency = 1
 
-    -- Header bar
-    local Header = Instance.new("Frame", Frame)
-    Header.Size = UDim2.new(1,0,0,32)
-    Header.BackgroundTransparency = 1
-
-    local lbl = Instance.new("TextLabel", Header)
-    lbl.Text = title
-    lbl.Font = Enum.Font.GothamSemibold
-    lbl.TextSize = 16
-    lbl.TextColor3 = Color3.new(1,1,1)
-    lbl.BackgroundTransparency = 1
-    lbl.Position = UDim2.new(0,40,0,0)
-    lbl.Size = UDim2.new(0.5,0,1,0)
-
+    -- Logo + Title
     if logo then
-        local img = Instance.new("ImageLabel", Header)
-        img.Image = logo
-        img.Size = UDim2.new(0,28,0,28)
-        img.Position = UDim2.new(0,4,0,2)
+        local img = Instance.new("ImageLabel", header)
+        img.Image, img.Size, img.Position = logo, UDim2.new(0,28,0,28), UDim2.new(0,8,0,4)
         img.BackgroundTransparency = 1
-        Instance.new("UICorner", img).CornerRadius = UDim.new(0,6)
+        Instance.new("UICorner", img).CornerRadius = UDim.new(0,8)
     end
+    local titleLbl = Instance.new("TextLabel", header)
+    titleLbl.Text, titleLbl.Font, titleLbl.TextSize = title, Enum.Font.GothamSemibold, 16
+    titleLbl.TextColor3, titleLbl.BackgroundTransparency = Color3.new(1,1,1), 1
+    titleLbl.Position, titleLbl.Size = UDim2.new(0, logo and 44 or 8, 0, 0), UDim2.new(0.5, -44, 1, 0)
 
-    local descLabel = Instance.new("TextLabel", Frame)
-    descLabel.Text = desc
-    descLabel.TextSize = 14
-    descLabel.Font = Enum.Font.Gotham
-    descLabel.TextColor3 = Color3.new(1,1,1)
-    descLabel.BackgroundTransparency = 1
-    descLabel.Position = UDim2.new(0,8,0,36)
-    descLabel.Size = UDim2.new(1, -16, 0, 20)
+    local descLbl = Instance.new("TextLabel", frame)
+    descLbl.Text, descLbl.Font, descLbl.TextSize = desc, Enum.Font.Gotham, 14
+    descLbl.TextColor3, descLbl.BackgroundTransparency = 1 = Color3.new(1,1,1), 1
+    descLbl.Position, descLbl.Size = UDim2.new(0,8,0,40), UDim2.new(1,-16,0,20)
 
-    -- Control buttons
-    local ctrlFrame = Instance.new("Frame", Header)
-    ctrlFrame.Size = UDim2.new(0,96,1,0)
-    ctrlFrame.Position = UDim2.new(1,-96,0,0)
-    ctrlFrame.BackgroundTransparency = 1
+    -- Control Buttons (-, □, ✕)
+    local ctrl = Instance.new("Frame", header)
+    ctrl.Size, ctrl.Position = UDim2.new(0,96,1,0), UDim2.new(1,-96,0,0)
+    ctrl.BackgroundTransparency = 1
 
-    local btnStyle = {Size = UDim2.new(0,28,0,28), Font = Enum.Font.GothamSemibold, TextSize = 16}
-
-    local function makeBtn(symbol, pos, onClick)
-        local b = Instance.new("TextButton", ctrlFrame)
-        b.Text = symbol
-        b.Size = btnStyle.Size
-        b.Position = UDim2.new(0,pos,0,2)
-        b.Font = btnStyle.Font
-        b.TextSize = btnStyle.TextSize
-        b.BackgroundTransparency = 0.5
-        b.TextColor3 = Color3.new(1,1,1)
-        Instance.new("UICorner", b).CornerRadius = UDim.new(0,4)
-        b.MouseButton1Click:Connect(onClick)
+    local function newCtrl(symbol, x, cb)
+        local b = Instance.new("TextButton", ctrl)
+        b.Text, b.Position, b.Size = symbol, UDim2.new(0,x,0,4), UDim2.new(0,28,0,28)
+        b.Font, b.TextSize, b.TextColor3 = Enum.Font.GothamSemibold, 18, Color3.new(1,1,1)
+        b.BackgroundColor3 = themeColor ; b.BackgroundTransparency = 0.4
+        Instance.new("UICorner", b).CornerRadius = UDim.new(0,6)
+        b.MouseButton1Click:Connect(cb)
     end
-
-    makeBtn("–", 0, function() Frame.Visible = false end)
-    makeBtn("□", 32, function() -- toggle size
-        Frame.Size = Frame.Size == UDim2.new(0,480,0,320) and UDim2.new(0,600,0,400) or UDim2.new(0,480,0,320)
-    end)
-    makeBtn("✕", 64, function() sg:Destroy() end)
+    newCtrl("–", 0, function() frame.Visible = false end)
+    newCtrl("□", 32, function() frame.Size = frame.Size == UDim2.new(0,520,0,360) and UDim2.new(0,640,0,480) or UDim2.new(0,520,0,360) end)
+    newCtrl("✕", 64, function() sg:Destroy() end)
 
     -- Sidebar
-    local side = Instance.new("Frame", Frame)
-    side.Position = UDim2.new(0,0,0,64); side.Size = UDim2.new(0,112,1,-64)
-    side.BackgroundTransparency = 1
-    self.Sidebar = side
+    local sidebar = Instance.new("Frame", frame)
+    sidebar.Position, sidebar.Size = UDim2.new(0,0,0,60), UDim2.new(0,132,1,-60)
+    sidebar.BackgroundTransparency = 1
+    local sideLayout = Instance.new("UIListLayout", sidebar)
+    sideLayout.Padding = UDim.new(0,4)
+    sideLayout.FillDirection = Enum.FillDirection.Vertical
+    sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    self.Sidebar = sidebar
 
-    -- Content holder
-    local content = Instance.new("Frame", Frame)
-    content.Position = UDim2.new(0,112,0,64); content.Size = UDim2.new(1,-112,1,-64)
+    -- Content area
+    local content = Instance.new("Frame", frame)
+    content.Position, content.Size = UDim2.new(0,132,0,60), UDim2.new(1,-132,1,-60)
     content.BackgroundTransparency = 1
+    local contentLayout = Instance.new("UIListLayout", content)
+    contentLayout.Padding = UDim.new(0,6)
+    contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
     self.Content = content
 
-    self.Tabs = {} ; self.SelectedTab = nil
     return self
 end
 
 function Library:AddTab(name)
-    local tab = {}
     local idx = #self.Sidebar:GetChildren()
     local btn = Instance.new("TextButton", self.Sidebar)
-    btn.Text = name ; btn.BackgroundTransparency = 0.6
-    btn.Size = UDim2.new(1,0,0,32); btn.Position = UDim2.new(0,0,0, idx*36)
-    btn.Font = Enum.Font.Gotham; btn.TextSize = 14
-    btn.TextColor3 = Color3.new(1,1,1)
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
+    btn.Text, btn.Font, btn.TextSize = name, Enum.Font.GothamSemibold, 15
+    btn.Size, btn.BackgroundColor3 = UDim2.new(1,0,0,32), Color3.new(0,0,0)
+    btn.BackgroundTransparency = 0.6
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,8)
 
     local pane = Instance.new("Frame", self.Content)
-    pane.Size = UDim2.new(1,1,1,1); pane.BackgroundTransparency = 1; pane.Visible = false
+    pane.Size, pane.BackgroundTransparency = UDim2.new(1,0,0,0), 1
     pane.LayoutOrder = idx
-    self.Tabs[name] = pane
+    local layout = Instance.new("UIListLayout", pane)
+    layout.Padding, layout.FillDirection = UDim.new(0,8), Enum.FillDirection.Vertical
 
     btn.MouseButton1Click:Connect(function()
-        for n,t in pairs(self.Tabs) do t.Visible = (n == name) end
+        for _,tb in pairs(self.Tabs) do tb.Frame.Visible = false end
+        pane.Visible = true
     end)
-    -- auto select first
-    if not self.SelectedTab then btn:CaptureFocus(); btn.MouseButton1Click:Fire(); self.SelectedTab = name end
 
-    function tab:Switch(text, default, cb) -- toggle style
-        local ctr = Instance.new("Frame", pane); ctr.Size = UDim2.new(1,-16,0,28)
-        ctr.Position = UDim2.new(0,8,0,#pane:GetChildren()*32)
-        local lbl = Instance.new("TextLabel", ctr); lbl.Text=text; lbl.Size=UDim2.new(0.7,0,1,0); lbl.BackgroundTransparency=1; lbl.Font=Enum.Font.Gotham; lbl.TextSize=14; lbl.TextColor3=Color3.new(1,1,1)
-        local sw = Instance.new("TextButton", ctr); sw.Text=default and "ON" or "OFF"
-        sw.Size = UDim2.new(0.3,-4,1,0); sw.Position=UDim2.new(0.7,4,0,0)
-        sw.BackgroundColor3=default and Color3.fromRGB(0,200,0) or Color3.fromRGB(200,0,0)
-        Instance.new("UICorner", sw).CornerRadius=UDim.new(0,4)
-        local state = default
+    if not self.ActiveTab then
+        btn:CaptureFocus(); btn.MouseButton1Click:Fire()
+        self.ActiveTab = name
+    end
+
+    local tab = {Frame = pane}
+
+    function tab:Switch(txt, def, cb)
+        local ctr = Instance.new("Frame", pane); ctr.Size = UDim2.new(1,0,0,30); ctr.BackgroundTransparency = 1
+        local lbl = Instance.new("TextLabel", ctr); lbl.Text, lbl.Size = txt, UDim2.new(0.6,0,1,0)
+        lbl.Font, lbl.TextSize, lbl.TextColor3 = Enum.Font.Gotham, 14, Color3.new(1,1,1); lbl.BackgroundTransparency = 1
+        local sw = Instance.new("TextButton", ctr); sw.Size, sw.Position = UDim2.new(0.4,-4,1,0), UDim2.new(0.6,4,0,0)
+        sw.Text, sw.Font, sw.TextSize = def and "ON" or "OFF", Enum.Font.GothamSemibold, 14
+        sw.BackgroundColor3 = def and Color3.fromRGB(128,0,128) or Color3.fromRGB(100,100,100)
+        Instance.new("UICorner", sw).CornerRadius = UDim.new(0,6)
+        local val = def
         sw.MouseButton1Click:Connect(function()
-            state = not state; sw.Text=state and "ON" or "OFF"
-            sw.BackgroundColor3=state and Color3.fromRGB(0,200,0) or Color3.fromRGB(200,0,0)
-            cb(state)
+            val = not val
+            sw.Text = val and "ON" or "OFF"
+            sw.BackgroundColor3 = val and themeColor or Color3.fromRGB(100,100,100)
+            cb(val)
         end)
     end
 
-    function tab:Button(text, cb)
-        local b = Instance.new("TextButton", pane)
-        b.Text = text; b.Size = UDim2.new(1,-16,0,28)
-        b.Position = UDim2.new(0,8,0,#pane:GetChildren()*32)
-        b.Font = Enum.Font.Gotham; b.TextSize = 14; b.TextColor3 = Color3.new(1,1,1)
-        b.BackgroundTransparency=0.6
-        Instance.new("UICorner", b).CornerRadius = UDim.new(0,4)
-        b.MouseButton1Click:Connect(cb)
+    function tab:Slider(txt, min, max, default, cb)
+        local ctr = Instance.new("Frame", pane); ctr.Size, ctr.BackgroundTransparency = UDim2.new(1,0,0,40), 1
+        local lbl = Instance.new("TextLabel", ctr); lbl.Text, lbl.Position = txt.." : "..default, UDim2.new(0,0,0,0)
+        lbl.Font, lbl.TextSize, lbl.TextColor3 = Enum.Font.Gotham, 14, Color3.new(1,1,1); lbl.BackgroundTransparency = 1
+        local bar = Instance.new("Frame", ctr); bar.Size, bar.Position = UDim2.new(1,0,0,20), UDim2.new(0,0,0,20)
+        bar.BackgroundColor3 = Color3.fromRGB(50,50,50)
+        Instance.new("UICorner", bar).CornerRadius = UDim.new(0,6)
+        local knob = Instance.new("Frame", bar); knob.Size = UDim2.new((default-min)/(max-min),0,1,0); knob.BackgroundColor3 = themeColor
+        Instance.new("UICorner", knob).CornerRadius = UDim.new(0,6)
+
+        local sliding = false
+        local function update(input)
+            local rel = math.clamp((input.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
+            knob.Size = UDim2.new(rel,0,1,0)
+            local val = math.floor(min + rel * (max-min))
+            lbl.Text = txt.." : "..val
+            cb(val)
+        end
+
+        bar.InputBegan:Connect(function(i)
+            if i.UserInputType == Enum.UserInputType.MouseButton1 then
+                sliding = true
+            end
+        end)
+        bar.InputEnded:Connect(function(i)
+            if i.UserInputType == Enum.UserInputType.MouseButton1 then
+                sliding = false
+            end
+        end)
+        bar.InputChanged:Connect(function(i)
+            if sliding and i.UserInputType == Enum.UserInputType.MouseMovement then
+                update(i)
+            end
+        end)
     end
 
-    self.Tabs[name] = pane
+    function tab:Dropdown(txt, options, cb)
+        local ctr = Instance.new("Frame", pane); ctr.Size, ctr.BackgroundTransparency = UDim2.new(1,0,0,30), 1
+        local lbl = Instance.new("TextLabel", ctr); lbl.Text, lbl.Size = txt..": "..options[1], UDim2.new(0.7,0,1,0)
+        lbl.Font, lbl.TextSize, lbl.TextColor3 = Enum.Font.Gotham,14,Color3.new(1,1,1); lbl.BackgroundTransparency =1
+        local btn = Instance.new("TextButton", ctr); btn.Text, btn.Size, btn.Position = "▼", UDim2.new(0.3, -4,1,0), UDim2.new(0.7,4,0,0)
+        btn.Font, btn.TextSize = Enum.Font.GothamSemibold,14; btn.BackgroundColor3 = themeColor
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
+
+        local list = Instance.new("Frame", ctr)
+        list.Size, list.Position = UDim2.new(1,0,0,#options*30), UDim2.new(0,0,0,30)
+        list.BackgroundColor3 = Color3.fromRGB(40,40,40)
+        Instance.new("UICorner", list).CornerRadius = UDim.new(0,6)
+        list.Visible = false
+
+        for i, opt in ipairs(options) do
+            local optBtn = Instance.new("TextButton", list)
+            optBtn.Text, optBtn.Size, optBtn.Position = opt, UDim2.new(1,0,0,30), UDim2.new(0,0,0,(i-1)*30)
+            optBtn.Font, optBtn.TextSize, optBtn.BackgroundTransparency = Enum.Font.Gotham,14,1
+            optBtn.TextColor3 = Color3.new(1,1,1)
+            optBtn.MouseButton1Click:Connect(function()
+                lbl.Text = txt..": "..opt
+                list.Visible = false
+                cb(opt)
+            end)
+        end
+        btn.MouseButton1Click:Connect(function() list.Visible = not list.Visible end)
+    end
+
+    function tab:InputBox(txt, placeholder, cb)
+        local ctr = Instance.new("Frame", pane); ctr.Size = UDim2.new(1,0,0,30); ctr.BackgroundTransparency =1
+        local lbl = Instance.new("TextLabel", ctr); lbl.Text, lbl.Size = txt..": ", UDim2.new(0.3,0,1,0)
+        lbl.Font, lbl.TextSize, lbl.TextColor3,lbl.BackgroundTransparency = Enum.Font.Gotham,14,Color3.new(1,1,1),1
+        local input = Instance.new("TextBox", ctr); input.PlaceholderText, input.Size, input.Position = placeholder, UDim2.new(0.7,-4,1,0), UDim2.new(0.3,4,0,0)
+        input.Font, input.TextSize, input.BackgroundColor3 = Enum.Font.Gotham,14,Color3.fromRGB(255,255,255)
+        Instance.new("UICorner", input).CornerRadius=UDim.new(0,6)
+        input.FocusLost:Connect(function(enter)
+            if enter then cb(input.Text) end
+        end)
+    end
+
+    function tab:Keybind(txt, defaultKey, cb)
+        local ctr = Instance.new("Frame", pane); ctr.Size = UDim2.new(1,0,0,30); ctr.BackgroundTransparency=1
+        local lbl = Instance.new("TextLabel", ctr); lbl.Text, lbl.Size = txt..": ["..defaultKey.."]", UDim2.new(0.6,0,1,0)
+        lbl.Font, lbl.TextSize, lbl.TextColor3, lbl.BackgroundTransparency = Enum.Font.Gotham,14,Color3.new(1,1,1),1
+        local btn = Instance.new("TextButton", ctr); btn.Text, btn.Size, btn.Position = "Change", UDim2.new(0.4,-4,1,0), UDim2.new(0.6,4,0,0)
+        btn.Font, btn.TextSize = Enum.Font.GothamSemibold,14; btn.BackgroundColor3 = themeColor
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
+
+        local current = defaultKey
+        btn.MouseButton1Click:Connect(function()
+            btn.Text = "Press Key..."
+            local conn
+            conn = UIS.InputBegan:Connect(function(inp)
+                if inp.UserInputType == Enum.UserInputType.Keyboard then
+                    current = inp.KeyCode.Name
+                    lbl.Text = txt..": ["..current.."]"
+                    btn.Text = "Change"
+                    cb(current)
+                    conn:Disconnect()
+                end
+            end)
+        end)
+    end
+
+    self.Tabs[name] = tab
     return tab
 end
 
-function Library:Destroy() self.sg:Destroy() end
+function Library:Destroy()
+    self.sg:Destroy()
+end
+
 return Library
