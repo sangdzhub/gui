@@ -1,0 +1,123 @@
+-- BaChuUI.lua (v1)
+local Library = {}
+Library.__index = Library
+
+function Library.CreateWindow(title)
+    local self = setmetatable({}, Library)
+    self.ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+    self.ScreenGui.Name = "BaChuUI"
+    self.Frame = Instance.new("Frame", self.ScreenGui)
+    self.Frame.AnchorPoint = Vector2.new(0.5,0.5)
+    self.Frame.Position = UDim2.new(0.5,0,0.5,0)
+    self.Frame.Size = UDim2.new(0, 450, 0, 300)
+    self.Frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+
+    local Title = Instance.new("TextLabel", self.Frame)
+    Title.Text = title or "UI Hub"
+    Title.Size = UDim2.new(1,0,0,30)
+    Title.BackgroundColor3 = Color3.fromRGB(45,45,45)
+    Title.TextColor3 = Color3.new(1,1,1)
+    Title.Font = Enum.Font.SourceSansBold
+    Title.TextSize = 20
+
+    -- Sidebar
+    self.Sidebar = Instance.new("Frame", self.Frame)
+    self.Sidebar.Position = UDim2.new(0, 0, 0, 30)
+    self.Sidebar.Size = UDim2.new(0, 100, 1, -30)
+    self.Sidebar.BackgroundColor3 = Color3.fromRGB(25,25,25)
+
+    self.Content = Instance.new("Frame", self.Frame)
+    self.Content.Position = UDim2.new(0, 100, 0, 30)
+    self.Content.Size = UDim2.new(1, -100, 1, -30)
+    self.Content.BackgroundColor3 = Color3.fromRGB(20,20,20)
+
+    self.Tabs = {}
+    self.SelectedTab = nil
+    return self
+end
+
+function Library:AddTab(name)
+    local tabBtn = Instance.new("TextButton", self.Sidebar)
+    tabBtn.Size = UDim2.new(1, 0, 0, 30)
+    tabBtn.Text = name
+    tabBtn.BackgroundColor3 = Color3.fromRGB(35,35,35)
+    tabBtn.TextColor3 = Color3.new(1,1,1)
+    tabBtn.Font = Enum.Font.SourceSans
+    tabBtn.TextSize = 18
+
+    local tabPage = Instance.new("Frame", self.Content)
+    tabPage.Size = UDim2.new(1,0,1,0)
+    tabPage.Visible = false
+    tabPage.BackgroundTransparency = 1
+
+    self.Tabs[name] = { Button = tabBtn, Page = tabPage }
+
+    tabBtn.MouseButton1Click:Connect(function()
+        if self.SelectedTab then
+            self.Tabs[self.SelectedTab].Page.Visible = false
+        end
+        tabPage.Visible = true
+        self.SelectedTab = name
+    end)
+
+    -- Auto-select first tab
+    if not self.SelectedTab then
+        tabBtn:CaptureFocus()
+        tabBtn.MouseButton1Click:Fire()
+    end
+
+    local tab = {}
+
+    function tab:Button(text, onClick)
+        local btn = Instance.new("TextButton", tabPage)
+        btn.Size = UDim2.new(1, -20, 0, 30)
+        btn.Position = UDim2.new(0, 10, 0, (#tabPage:GetChildren()) * 35)
+        btn.Text = text
+        btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+        btn.TextColor3 = Color3.new(1,1,1)
+        btn.Font = Enum.Font.SourceSans
+        btn.TextSize = 18
+        btn.MouseButton1Click:Connect(onClick)
+    end
+
+    function tab:Toggle(text, default, onToggle)
+        local container = Instance.new("Frame", tabPage)
+        container.Size = UDim2.new(1, -20, 0, 30)
+        container.Position = UDim2.new(0, 10, 0, (#tabPage:GetChildren()) * 35)
+        container.BackgroundTransparency = 1
+
+        local label = Instance.new("TextLabel", container)
+        label.Text = text
+        label.Size = UDim2.new(0.8, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.TextColor3 = Color3.new(1,1,1)
+        label.Font = Enum.Font.SourceSans
+        label.TextSize = 18
+        label.TextXAlignment = Enum.TextXAlignment.Left
+
+        local toggle = Instance.new("TextButton", container)
+        toggle.Size = UDim2.new(0.2, -5, 1, -5)
+        toggle.Position = UDim2.new(0.8, 0, 0, 2)
+        toggle.Text = default and "ON" or "OFF"
+        toggle.BackgroundColor3 = default and Color3.fromRGB(0,200,0) or Color3.fromRGB(200,0,0)
+        toggle.TextColor3 = Color3.new(1,1,1)
+        toggle.Font = Enum.Font.SourceSans
+        toggle.TextSize = 18
+
+        local state = default
+        toggle.MouseButton1Click:Connect(function()
+            state = not state
+            toggle.Text = state and "ON" or "OFF"
+            toggle.BackgroundColor3 = state and Color3.fromRGB(0,200,0) or Color3.fromRGB(200,0,0)
+            onToggle(state)
+        end)
+    end
+
+    return tab
+end
+
+function Library:Destroy()
+    self.ScreenGui:Destroy()
+end
+
+return Library
